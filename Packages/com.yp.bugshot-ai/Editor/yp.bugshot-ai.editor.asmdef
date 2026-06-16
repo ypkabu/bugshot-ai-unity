@@ -1,0 +1,18 @@
+{
+  "name": "yp.bugshot-ai.editor",
+  "rootNamespace": "YP.BugShotAI.Editor",
+  "references": [
+    "yp.bugshot-ai"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

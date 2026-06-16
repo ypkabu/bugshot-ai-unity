@@ -5,8 +5,7 @@
   "description": "Captures Unity error context such as logs, screenshots, scene name, FPS, player position, and recent events, then writes a JSON bug report.",
   "unity": "2022.3",
   "author": {
-    "name": "yp",
-    "email": "zhushihuisheyp028@gmail.com"
+    "name": "yp"
   },
   "keywords": [
     "debugging",

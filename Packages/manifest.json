@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.yp.bugshot-ai": "file:com.yp.bugshot-ai",
     "com.unity.2d.animation": "14.0.3",
     "com.unity.2d.aseprite": "4.0.1",
     "com.unity.2d.psdimporter": "13.0.2",

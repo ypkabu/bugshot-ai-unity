@@ -13,6 +13,8 @@ namespace YP.BugShotAI
     [DisallowMultipleComponent]
     public sealed class BugShotAIRecorder : MonoBehaviour
     {
+        private const string PackageVersion = "0.1.0";
+
         [Header("Target")]
         [Tooltip("Optional. Assign the player Transform to include its position in reports.")]
         [SerializeField] private Transform playerTransform;
@@ -34,6 +36,19 @@ namespace YP.BugShotAI
         {
             get => playerTransform;
             set => playerTransform = value;
+        }
+
+        public string LastReportPath { get; private set; }
+
+        private void OnValidate()
+        {
+            maxRecentEvents = Mathf.Max(1, maxRecentEvents);
+            duplicateCooldownSeconds = Mathf.Max(0f, duplicateCooldownSeconds);
+
+            if (string.IsNullOrWhiteSpace(outputFolderName))
+            {
+                outputFolderName = "BugShotAI";
+            }
         }
 
         private void OnEnable()
@@ -88,8 +103,8 @@ namespace YP.BugShotAI
             }
             catch (Exception ex)
             {
-                // Avoid recursive Debug.LogError here. A plain console write is safer for a logger callback.
-                Console.WriteLine($"[BugShotAI] Failed to capture bug report: {ex}");
+                // Warning logs are ignored by ShouldCapture, so this avoids recursive error capture.
+                Debug.LogWarning($"[BugShotAI] Failed to capture bug report: {ex}");
             }
             finally
             {
@@ -110,25 +125,41 @@ namespace YP.BugShotAI
             string outputDirectory = Path.Combine(Application.persistentDataPath, outputFolderName);
             Directory.CreateDirectory(outputDirectory);
 
-            string screenshotPath = Path.Combine(outputDirectory, $"bugshot_{timestamp}.png");
+            string screenshotFileName = $"bugshot_{timestamp}.png";
+            string screenshotPath = Path.Combine(outputDirectory, screenshotFileName);
             ScreenCapture.CaptureScreenshot(screenshotPath);
+            Scene activeScene = SceneManager.GetActiveScene();
 
             BugShotAIReport report = new BugShotAIReport
             {
                 timestampUtc = DateTime.UtcNow.ToString("o"),
-                sceneName = SceneManager.GetActiveScene().name,
+                sceneName = GetSceneName(activeScene),
+                scenePath = NormalizePath(activeScene.path),
                 logType = type.ToString(),
                 condition = condition,
                 stackTrace = stackTrace,
-                screenshotPath = screenshotPath,
+                screenshotPath = NormalizePath(screenshotPath),
+                screenshotFileName = screenshotFileName,
                 fps = smoothedFps,
                 playerPosition = CreatePlayerPosition(),
+                environment = CreateEnvironment(),
                 recentEvents = recentEvents.ToArray()
             };
 
             string reportPath = Path.Combine(outputDirectory, $"bugshot_{timestamp}.json");
             string json = JsonUtility.ToJson(report, true);
             File.WriteAllText(reportPath, json);
+            LastReportPath = NormalizePath(reportPath);
+        }
+
+        private static string GetSceneName(Scene scene)
+        {
+            return string.IsNullOrEmpty(scene.name) ? "(Untitled Scene)" : scene.name;
+        }
+
+        private static string NormalizePath(string path)
+        {
+            return string.IsNullOrEmpty(path) ? string.Empty : path.Replace('\\', '/');
         }
 
         private BugShotAIPlayerPosition CreatePlayerPosition()
@@ -151,6 +182,22 @@ namespace YP.BugShotAI
                 x = position.x,
                 y = position.y,
                 z = position.z
+            };
+        }
+
+        private BugShotAIEnvironment CreateEnvironment()
+        {
+            return new BugShotAIEnvironment
+            {
+                unityVersion = Application.unityVersion,
+                platform = Application.platform.ToString(),
+                operatingSystem = SystemInfo.operatingSystem,
+                deviceModel = SystemInfo.deviceModel,
+                systemMemorySize = SystemInfo.systemMemorySize,
+                graphicsDeviceName = SystemInfo.graphicsDeviceName,
+                productName = Application.productName,
+                companyName = Application.companyName,
+                packageVersion = PackageVersion
             };
         }
 
@@ -181,13 +228,30 @@ namespace YP.BugShotAI
     {
         public string timestampUtc;
         public string sceneName;
+        public string scenePath;
         public string logType;
         public string condition;
         public string stackTrace;
         public string screenshotPath;
+        public string screenshotFileName;
         public float fps;
         public BugShotAIPlayerPosition playerPosition;
+        public BugShotAIEnvironment environment;
         public BugShotAIEvent[] recentEvents;
+    }
+
+    [Serializable]
+    public sealed class BugShotAIEnvironment
+    {
+        public string unityVersion;
+        public string platform;
+        public string operatingSystem;
+        public string deviceModel;
+        public int systemMemorySize;
+        public string graphicsDeviceName;
+        public string productName;
+        public string companyName;
+        public string packageVersion;
     }
 
     [Serializable]

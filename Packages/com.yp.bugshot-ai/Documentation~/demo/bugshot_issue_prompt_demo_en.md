@@ -1,0 +1,94 @@
+﻿Create a GitHub Issue from the following BugShot AI JSON report.
+
+Output rules:
+- Output a Markdown GitHub Issue.
+- Include Title, Summary, Environment, Steps to Reproduce, Expected Result, Actual Result, Logs, Screenshot, and Severity.
+- Do not invent unknown information.
+- Use `Unknown` when information is missing.
+- Use recentEvents to infer reproduction steps when possible.
+- Extract important lines from stackTrace.
+- Choose Severity from Critical / High / Medium / Low.
+
+JSON Report File: bugshot_20260614_204818_125.json
+
+JSON:
+```json
+{
+    "timestampUtc": "2026-06-14T20:48:18.1300610Z",
+    "sceneName": "DemoScene",
+    "scenePath": "Assets/Scenes/DemoScene.unity",
+    "logType": "Error",
+    "condition": "Player fell through the floor near the right platform.",
+    "stackTrace": "UnityEngine.Debug:LogError (object)\nBugShotAIDemoBugTrigger:TriggerDemoBug () (at Assets/Samples/BugShotAI/BasicSetup/BugShotAIDemoBugTrigger.cs:63)\nSystem.Reflection.MethodBase:Invoke (object,object[])\nBugShotAIDemoVerifier:InvokeDemoBugTrigger () (at Assets/Editor/BugShotAIDemoVerifier.cs:342)\nBugShotAIDemoVerifier/<PlayFlow>d__16:MoveNext () (at Assets/Editor/BugShotAIDemoVerifier.cs:240)\nBugShotAIDemoVerifier/EditorCoroutine/<>c__DisplayClass0_0:<Start>g__Tick|0 () (at Assets/Editor/BugShotAIDemoVerifier.cs:517)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions ()\n",
+    "screenshotPath": ".../BugShotAI Demo/BugShotAI/bugshot_20260614_204818_125.png",
+    "screenshotFileName": "bugshot_20260614_204818_125.png",
+    "fps": 66.0302734375,
+    "playerPosition": {
+        "hasPlayer": true,
+        "x": 2.5,
+        "y": -3.200000047683716,
+        "z": 0.0
+    },
+    "environment": {
+        "unityVersion": "6000.4.6f1",
+        "platform": "WindowsEditor",
+        "operatingSystem": "Windows 11  (10.0.26200)",
+        "deviceModel": "P6I7G70BKBCD (MouseComputer)",
+        "systemMemorySize": 32485,
+        "graphicsDeviceName": "NVIDIA GeForce RTX 5070 Laptop GPU",
+        "productName": "BugShotAI Demo",
+        "companyName": "YP",
+        "packageVersion": "0.1.0"
+    },
+    "recentEvents": [
+        {
+            "timestampUtc": "2026-06-14T20:48:16.9634229Z",
+            "timeSinceStartup": 2.7988054752349855,
+            "category": "BugShotAI",
+            "message": "Recorder enabled"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1236442Z",
+            "timeSinceStartup": 3.9543187618255617,
+            "category": "Player",
+            "message": "Pressed move right"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1236442Z",
+            "timeSinceStartup": 3.9543263912200929,
+            "category": "Player",
+            "message": "Pressed dash"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1236442Z",
+            "timeSinceStartup": 3.954328775405884,
+            "category": "Player",
+            "message": "Pressed jump"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1241858Z",
+            "timeSinceStartup": 3.9551076889038088,
+            "category": "Player",
+            "message": "Moved to right platform"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1241858Z",
+            "timeSinceStartup": 3.955112934112549,
+            "category": "Player",
+            "message": "Pressed dash before jump"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1241858Z",
+            "timeSinceStartup": 3.9551143646240236,
+            "category": "Player",
+            "message": "Jumped near platform edge"
+        },
+        {
+            "timestampUtc": "2026-06-14T20:48:18.1241858Z",
+            "timeSinceStartup": 3.955115556716919,
+            "category": "Bug",
+            "message": "Player Y position dropped below expected floor height"
+        }
+    ]
+}
+```
