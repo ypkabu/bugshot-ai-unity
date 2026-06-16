@@ -68,7 +68,7 @@ Then open or reload the Unity project.
 After publishing this repository, the package can be installed through Unity Package Manager using a Git URL that points to the package path:
 
 ```text
-https://github.com/ypkabu/bugshot-ai.git?path=Packages/com.yp.bugshot-ai
+https://github.com/ypkabu/bugshot-ai-unity.git?path=Packages/com.yp.bugshot-ai
 ```
 
 ## Basic Setup
