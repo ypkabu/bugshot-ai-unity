@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-09
+
 - Moved settings, privacy masking, fingerprinting, formatting, and report storage out of the Recorder where each has a separate test or failure boundary.
 - Added sanitized one-report-per-folder output under `BugShotReports/<report-id>/`.
 - Added report IDs, fingerprints, occurrence counts, editor state, user notes, and recent console logs to reports.

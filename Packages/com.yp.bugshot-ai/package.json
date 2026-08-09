@@ -1,11 +1,11 @@
 {
   "name": "com.yp.bugshot-ai",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "displayName": "BugShot AI for Unity",
-  "description": "Captures Unity error context such as logs, screenshots, scene name, FPS, player position, and recent events, then writes a JSON bug report.",
-  "unity": "2022.3",
+  "description": "Captures Unity error context, masks common sensitive text, and writes JSON, Markdown, and GitHub Issue draft prompts.",
+  "unity": "6000.4",
   "author": {
-    "name": "yp"
+    "name": "YP"
   },
   "keywords": [
     "debugging",
