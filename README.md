@@ -4,12 +4,9 @@ BugShot AI is a local Unity Editor extension that saves the context around an Er
 
 It does not find or fix bugs, and it does not send reports outside the local machine. Its purpose is to leave useful evidence for debugging and for drafting an Issue.
 
-For the CA Game Gym portfolio, ECHO//SHIFT is the main game project. BugShot AI is a supporting work that shows Unity Editor tooling, debugging, failure handling, and testing.
-
 ## Project Links
 
 - [Package documentation and demo](Packages/com.yp.bugshot-ai/README.md)
-- [CA Game Gym portfolio supplement](Docs/Application/CA_Game_Gym/BugShotSummary.md)
 - [Architecture](Packages/com.yp.bugshot-ai/Documentation~/ARCHITECTURE.md)
 - [Testing](Packages/com.yp.bugshot-ai/Documentation~/TESTING.md)
 - [Privacy notes](Packages/com.yp.bugshot-ai/Documentation~/SECURITY_AND_PRIVACY.md)
