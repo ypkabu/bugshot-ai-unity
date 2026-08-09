@@ -169,3 +169,10 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# Public package demo media is small enough to keep the repository clone self-contained.
+Packages/com.yp.bugshot-ai/Documentation~/ExampleReport/screenshot.png !text !filter !merge !diff
+Packages/com.yp.bugshot-ai/Documentation~/demo/bugshot-ai-demo.mp4 !text !filter !merge !diff
+Packages/com.yp.bugshot-ai/Documentation~/images/bugshot-main-window.png !text !filter !merge !diff
+Packages/com.yp.bugshot-ai/Documentation~/images/generated-report.png !text !filter !merge !diff
+Packages/com.yp.bugshot-ai/Documentation~/images/privacy-preview.png !text !filter !merge !diff

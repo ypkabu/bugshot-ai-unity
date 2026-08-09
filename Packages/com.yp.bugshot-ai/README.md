@@ -1,247 +1,197 @@
 # BugShot AI for Unity
 
-## What is BugShot AI?
+BugShot AI saves the context around a Unity Error or Exception so a developer can review it before writing an Issue or asking an AI tool for help.
 
-BugShot AI is a Unity package that records debugging context when an `Error`, `Exception`, or `Assert` is logged.
+It does not find or fix bugs, and it does not send reports outside the local machine.
 
-It is not a bug detection system. Instead, it helps preserve the situation around an error so that developers can inspect it later or paste the report into an AI assistant to draft a GitHub Issue.
+## What Problem It Solves
 
-Generated reports include a JSON file, a PNG screenshot, environment details, optional player position, and recent gameplay breadcrumbs recorded from code.
+When I reproduced a Unity bug, the Console message was often available but the surrounding context was not. I still had to explain which Scene was open, what happened immediately before the error, which Unity environment was running, and whether the Game View showed anything useful.
+
+Copying a raw stack trace also risked sharing a local user path or token-like value. I built this package to capture those details when Unity logs the error, mask common sensitive text, and leave the result for the developer to review.
 
 ## Demo
 
-Demo flow:
+The Basic Setup sample contains two scripts for checking the capture flow in a Scene of your choice:
 
-1. Enter Unity Play Mode.
-2. Press `D -> LeftShift -> Space -> B` in the demo sample.
-3. A floor-clipping style error is logged to the Console.
-4. BugShot AI saves `bugshot_*.json`, `bugshot_*.png`, and a prompt Markdown file.
-5. The JSON report includes `recentEvents`.
-6. The saved prompt can be used to generate a GitHub Issue draft.
+1. Import the Basic Setup sample.
+2. Add `BugShotAIDemoBugTrigger` or `BugShotAIDemoErrorPanel` to a GameObject in your Scene.
+3. Open `Tools > BugShot AI > Open Window` and create a Recorder if the Scene does not already contain one.
+4. Enter Play Mode.
+5. With `BugShotAIDemoBugTrigger`, press `D -> LeftShift -> Space -> B`. With `BugShotAIDemoErrorPanel`, click `Debug.LogError`.
+6. Unity logs the demo Error and creates a report.
+7. Select the new report and review its Error, Screenshot, recent events, privacy preview, Markdown, and prompt.
 
-Demo video:
+[Watch the 56-second repository demo](Documentation~/demo/bugshot-ai-demo.mp4) (1920x1080, no audio).
 
-[BugShot AI demo video](Documentation~/demo/bugshot-ai-demo-42s.mp4)
+![BugShot AI Editor Window showing report history and details](Documentation~/images/bugshot-main-window.png)
 
-Editor Window:
+![Generated report with masked paths and reproduction details](Documentation~/images/generated-report.png)
 
-![BugShot AI Editor Window](Documentation~/images/bugshot-ai-window.png)
+![Privacy sanitizer before and after preview](Documentation~/images/privacy-preview.png)
 
-Reports Folder:
+The sanitized files in [Documentation~/ExampleReport/](Documentation~/ExampleReport/) provide a reproducible text-output example.
 
-![BugShot AI Reports Folder](Documentation~/images/reports-folder.png)
+## Before / After
 
-JSON report with `recentEvents`:
+The first MVP completed the capture flow, but it exposed concrete problems:
 
-![BugShot AI JSON recentEvents](Documentation~/images/bugshot-recent-events-json.png)
+- `BugShotAIRecorder` requested the screenshot, assembled JSON, and saved files itself.
+- Prompt text was built in the Editor Window, so it was difficult to test without the UI.
+- Repeated identical errors could create many JSON and PNG files.
+- Privacy handling only replaced a report path when building a prompt.
+- Batchmode screenshot capture returned no texture.
 
-Generated GitHub Issue example:
+The current version keeps the Recorder as the Unity callback coordinator and moves deterministic or failure-prone work behind concrete classes:
 
-![BugShot AI generated GitHub Issue](Documentation~/images/bugshot-generated-github-issue.png)
+- reports use one folder with fixed filenames
+- formatting is independent of the Editor Window
+- a fingerprint cooldown limits repeated screenshot and disk work
+- reports are sanitized before JSON, Markdown, or prompts are written
+- screenshot failure is stored as data and the text report still saves
 
-## Features
+## Installation and Setup
 
-- Detects Unity `Error`, `Exception`, and `Assert` logs via `Application.logMessageReceived`
-- Saves a JSON report under `Application.persistentDataPath/BugShotAI/`
-- Saves a PNG screenshot next to the JSON report
-- Records scene name, scene path, FPS, optional player position, and environment information
-- Stores recent gameplay breadcrumbs through `BugShotAIEventLogger.Record(category, message)`
-- Provides an Editor Window at `Tools > BugShot AI > Open Window`
-- Creates a `BugShotAIRecorder` in the active scene from the Editor Window
-- Opens the reports folder from the Editor Window
-- Copies or saves Japanese and English GitHub Issue prompts from the latest JSON report
-
-## Installation
-
-### Option 1: Copy Into Packages
-
-Copy this package folder into your Unity project:
-
-```text
-Packages/com.yp.bugshot-ai/
-```
-
-Then open or reload the Unity project.
-
-### Option 2: Git URL
-
-After publishing this repository, the package can be installed through Unity Package Manager using a Git URL that points to the package path:
+Install from a Git URL in Unity Package Manager:
 
 ```text
 https://github.com/ypkabu/bugshot-ai-unity.git?path=Packages/com.yp.bugshot-ai
 ```
 
-## Basic Setup
+The package manifest minimum is Unity 6000.4.
 
-1. Open Unity.
-2. Select `Tools > BugShot AI > Open Window`.
-3. Click `Create BugShotAI Recorder In Scene`.
-4. Optional: select the created `BugShotAI` GameObject and assign your player object to `Player Transform`.
-5. Enter Play Mode.
-6. Trigger an error or exception.
+1. Open `Tools > BugShot AI > Open Window`.
+2. Click `Create Recorder In Scene`.
+3. Optionally assign `Player Transform` on the Recorder.
+4. Configure capture, privacy, and storage under `Project Settings > BugShot AI`.
+5. Enter Play Mode and trigger an Error or Exception.
+6. Select the report and review it before copying or sharing anything.
 
-Reports are saved to:
+## Main Features
 
-```text
-Application.persistentDataPath/BugShotAI/
-```
+- Captures configured Unity `Error`, `Exception`, `Assert`, and `Warning` logs.
+- Stores scene information, environment, FPS, optional player position, breadcrumbs, and recent Console logs.
+- Writes JSON, Markdown, JP/EN prompt text, and an optional PNG into one report folder.
+- Lists reports and displays their Error, Environment, Screenshot, Reproduction, Privacy, and Export information in an Editor Window.
+- Limits repeated capture work using a fingerprint cooldown.
+- Deletes the oldest report folders when the configured count or approximate size limit is exceeded.
+- Keeps Runtime code free of `UnityEditor` references.
 
-Use `Open Reports Folder` in the Editor Window to open the folder.
-
-### Trigger A Test Error
-
-In Play Mode, open `Tools > BugShot AI > Open Window` and click `Trigger Test Error`.
-
-You can also trigger an error from gameplay code:
+Gameplay code can record a short breadcrumb:
 
 ```csharp
-using UnityEngine;
-
-public sealed class ExampleError : MonoBehaviour
-{
-    private void Start()
-    {
-        Debug.LogError("Test error");
-    }
-}
+BugShotAIEventLogger.Record("Player", "Jumped near platform edge");
 ```
 
-## Demo Bug Trigger Sample
-
-The package includes a sample script:
+## Actual Output
 
 ```text
-Samples~/BasicSetup/BugShotAIDemoBugTrigger.cs
+BugShotReports/
+  20260731_071500_123_ab12cd34/
+    report.json
+    report.md
+    screenshot.png
+    prompt_ja.txt
+    prompt_en.txt
 ```
 
-This sample records a short floor-clipping bug sequence for demos and README screenshots.
+`screenshot.png` is omitted when Unity cannot capture a texture. In that case, `report.json` contains `screenshotError` and the remaining files are still written.
 
-Setup:
+The JSON contains the error identity, Scene, user notes, optional player position, environment, recent events, and recent logs. See the checked-in [sanitized example](Documentation~/ExampleReport/).
 
-1. Import or copy the Basic Setup sample into your project.
-2. Add `BugShotAIDemoBugTrigger` to any active GameObject in the scene.
-3. Make sure a `BugShotAIRecorder` exists in the scene.
-4. Enter Play Mode.
+## Design Decisions
 
-Input sequence:
+### Recorder as coordinator
 
-1. Press `D` or `Right Arrow` to record a move-right event.
-2. Press `LeftShift` to record a dash event.
-3. Press `Space` to record a jump event.
-4. Press `B` to trigger the demo bug.
+`BugShotAIRecorder` owns Unity callbacks, FPS sampling, the optional player Transform, and the capture sequence. Masking, duplicate decisions, formatting, and storage stay outside the component because each has deterministic tests or a separate failure boundary.
 
-When `B` is pressed, the sample records these breadcrumbs and logs an error:
+### Fingerprint cooldown
+
+The fingerprint uses the log type, condition, and first useful stack line. Timestamp, Scene, FPS, and player position are excluded because those changing values would stop repeated instances of the same error from matching.
+
+Suppressed occurrences are counted in memory, but screenshot capture and disk writes are skipped until the cooldown expires.
+
+### Privacy order
+
+Masking runs in this order: known project and home roots, generic user paths, optional email, authorization and token-like text, then optional IP addresses. Specific roots run first so a project path can keep the more useful `<PROJECT_ROOT>` label.
+
+### Screenshot fallback
+
+An Error can be raised while the Editor is drawing a non-Game UI target, so Play Mode capture waits for the end of the frame before calling `ScreenCapture.CaptureScreenshotAsTexture()`. The API can still return no texture in batchmode or without a usable render target. The PNG is supporting evidence, so its failure does not discard the Error, stack trace, environment, or breadcrumbs.
+
+### Storage limits
+
+The default limit is 50 report folders and approximately 256 MB. Cleanup selects the oldest folders first. The selection rule is tested separately from file deletion.
+
+### Runtime and Editor assemblies
+
+Play Mode capture and the public breadcrumb API remain in the Runtime assembly. The Window and Project Settings UI are in an Editor-only assembly that references Runtime. Runtime does not reference `UnityEditor`.
+
+More detail is available in [ARCHITECTURE.md](Documentation~/ARCHITECTURE.md) and [DESIGN_DECISIONS.md](Documentation~/DESIGN_DECISIONS.md).
+
+## Approaches I Did Not Adopt
+
+I did not add automatic GitHub Issue posting or external AI submission. Those paths require authentication storage, permission and network error handling, and a stronger confirmation step. More importantly, automatic sending could expose project information before the developer reviews the masked text and screenshot.
+
+The package stops at local files and explicit copy actions.
+
+## Privacy
+
+The sanitizer is pattern-based. This test-style example matches the current output:
+
+Before:
 
 ```text
-Player fell through the floor near the right platform.
+C:\Users\alice\Project\Assets\Test.cs
+Authorization: Bearer demo-token
 ```
 
-## JSON Report Example
+After:
 
-Example report structure:
-
-```json
-{
-  "timestampUtc": "2026-06-14T20:48:18.1300610Z",
-  "sceneName": "DemoScene",
-  "scenePath": "Assets/Scenes/DemoScene.unity",
-  "logType": "Error",
-  "condition": "Player fell through the floor near the right platform.",
-  "stackTrace": "UnityEngine.Debug:LogError (object)\nBugShotAIDemoBugTrigger:TriggerDemoBug () ...",
-  "screenshotPath": ".../BugShotAI Demo/BugShotAI/bugshot_20260614_204818_125.png",
-  "screenshotFileName": "bugshot_20260614_204818_125.png",
-  "fps": 66.03,
-  "playerPosition": {
-    "hasPlayer": true,
-    "x": 2.5,
-    "y": -3.2,
-    "z": 0.0
-  },
-  "environment": {
-    "unityVersion": "6000.4.6f1",
-    "platform": "WindowsEditor",
-    "operatingSystem": "Windows 11",
-    "deviceModel": "Unknown",
-    "systemMemorySize": 32485,
-    "graphicsDeviceName": "NVIDIA GeForce RTX 5070 Laptop GPU",
-    "productName": "BugShotAI Demo",
-    "companyName": "YP",
-    "packageVersion": "0.1.0"
-  },
-  "recentEvents": [
-    {
-      "category": "Player",
-      "message": "Pressed move right"
-    },
-    {
-      "category": "Player",
-      "message": "Pressed dash"
-    },
-    {
-      "category": "Player",
-      "message": "Pressed jump"
-    },
-    {
-      "category": "Bug",
-      "message": "Player Y position dropped below expected floor height"
-    }
-  ]
-}
+```text
+<USER_HOME>\Project\Assets\Test.cs
+Authorization: <REDACTED>
 ```
 
-Report fields:
+It also handles macOS and Linux home paths, UNC user paths, email addresses, GitHub token-like strings, secret assignments, URL secrets, and optional IP addresses. It cannot know every project-specific name, and screenshots always require human review. See [SECURITY_AND_PRIVACY.md](Documentation~/SECURITY_AND_PRIVACY.md).
 
-- `timestampUtc`: UTC timestamp for the report
-- `sceneName`: active scene name
-- `scenePath`: active scene asset path when available
-- `logType`: Unity log type
-- `condition`: log message
-- `stackTrace`: Unity stack trace
-- `screenshotPath`: screenshot path
-- `screenshotFileName`: PNG file name only
-- `fps`: smoothed FPS value
-- `playerPosition`: optional player position
-- `environment`: Unity, device, project, and package information
-- `recentEvents`: recent breadcrumbs recorded with `BugShotAIEventLogger`
+## Duplicate Suppression
 
-## GitHub Issue Prompt
+SubmissionValidation emits the same `Debug.LogError` five times during a 60-second cooldown and verifies that one report folder is created. A separate tracker assertion verifies that suppressed occurrences still increase its in-memory count.
 
-After a report is generated, open `Tools > BugShot AI > Open Window`.
+The first saved JSON is not rewritten for each suppressed hit, so its `occurrenceCount` describes the capture that created that file. The current tests do not claim otherwise.
 
-Available actions:
+## Validation
 
-- `Copy GitHub Issue Prompt JP`
-- `Copy GitHub Issue Prompt EN`
-- `Save GitHub Issue Prompt JP To File`
-- `Save GitHub Issue Prompt EN To File`
+EditMode tests cover 30 deterministic cases: masking, text limits, fingerprint stability, duplicate rules, formatting, storage policy, and storage error handling.
 
-The prompt asks an AI assistant to generate a Markdown GitHub Issue with:
+SubmissionValidation uses actual Unity callbacks and file-system boundaries. `RunAll` checks 27 capture, storage, privacy, duplicate, Editor registration, sample, and screenshot-fallback cases. Persistence Phase 1 saves settings and report state in one Unity process; Phase 2 starts another Unity process and verifies 3 restart outcomes after 2 Phase 1 checks.
 
-- Title
-- Summary
-- Environment
-- Steps to Reproduce
-- Expected Result
-- Actual Result
-- Logs
-- Screenshot
-- Severity
+The clean UPM pass creates a separate Unity project, resolves the local package, runs the same tests and validation phases, then performs a Windows Player Build smoke check.
 
-The prompt also instructs the AI assistant not to invent missing information. Missing values should be written as `Unknown`.
+Commands and result files are documented in [TESTING.md](Documentation~/TESTING.md). The short interactive pass is in [QA_CHECKLIST.md](Documentation~/QA_CHECKLIST.md).
 
-If you shorten the JSON for a README, video, or social post, keep the fields that support the issue content you expect AI to generate. Do not ask AI to include details that are not present in the shortened JSON.
+Latest verified environment:
 
-## Verification Status
+- Unity 6000.4.6f1 Windows Editor
+- Package compile: Pass
+- Original project EditMode: 30 passed / 0 failed
+- Original project SubmissionValidation: 27/27; Persistence 2/2 and 3/3
+- Clean UPM project EditMode: 30 passed / 0 failed
+- Clean UPM SubmissionValidation: 27/27; Persistence 2/2 and 3/3
+- Clean Windows Player Build smoke: Pass
 
-- Configured for Unity 2022.3 or later
-- Tested on Unity 6000.4.6f1 with Windows Editor
-- Unity 2022.3 LTS verification is pending
-- Runtime and Editor assemblies are separated
-- Runtime code does not reference `UnityEditor`
+## Limitations
 
-## Roadmap
+- `package.json` requires Unity 6000.4; verification was performed with Unity 6000.4.6f1 on Windows.
+- Unity 2022.3 LTS has not been tested.
+- Screenshot capture may fail in batchmode, outside Play Mode, or without a usable render target.
+- Reports still save when no screenshot is available.
+- Masking can produce false positives and cannot guarantee removal of every project-specific value.
+- Screenshots may contain visual information that text masking cannot inspect.
+- Suppressed duplicate hits do not rewrite the first saved report's occurrence count.
+- Reports are not sent automatically to GitHub or an external AI service.
 
-- In-Editor issue preview
-- Configurable report fields
-- Report list viewer
-- Optional integrations for external issue trackers
+## AI Use
+
+AI tools were used to organize implementation options, list test cases, review code, and help structure documentation. I made the final specification decisions, selected or rejected code, integrated it into Unity, ran the checks, fixed problems, and reviewed the test results.
