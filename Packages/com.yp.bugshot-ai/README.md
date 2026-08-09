@@ -153,7 +153,7 @@ After:
 Authorization: <REDACTED>
 ```
 
-It also handles macOS and Linux home paths, UNC user paths, email addresses, GitHub token-like strings, secret assignments, URL secrets, and optional IP addresses. It cannot know every project-specific name, and screenshots always require human review. See [SECURITY_AND_PRIVACY.md](Documentation~/SECURITY_AND_PRIVACY.md).
+It also handles macOS and Linux home paths, UNC user paths, email addresses, GitHub token-like strings, secret assignments, URL secrets, and optional IP addresses. It cannot know every project-specific name, and screenshots always require manual review. See [SECURITY_AND_PRIVACY.md](Documentation~/SECURITY_AND_PRIVACY.md).
 
 ## Duplicate Suppression
 
@@ -191,7 +191,3 @@ Latest verified environment:
 - Screenshots may contain visual information that text masking cannot inspect.
 - Suppressed duplicate hits do not rewrite the first saved report's occurrence count.
 - Reports are not sent automatically to GitHub or an external AI service.
-
-## AI Use
-
-AI tools were used to organize implementation options, list test cases, review code, and help structure documentation. I made the final specification decisions, selected or rejected code, integrated it into Unity, ran the checks, fixed problems, and reviewed the test results.

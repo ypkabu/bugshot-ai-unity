@@ -96,11 +96,7 @@ Gameplay以外にも、Unityのframe timing、Editor API、lifecycle、失敗時
 
 ### 載せるデメリット
 
-名前にAIを含むため、AI機能が主役の大きな製品、または生成AIへ全面依存した実装と誤解される可能性があります。また、説明量を増やしすぎるとメインのゲーム作品が埋もれます。応募フォームでは3つの技術点に絞り、補助作品と明記する必要があります。
-
-### 「AIに全部作らせたのでは？」と疑われやすい箇所
-
-クラス分割、30件のテスト、複数の検証script、日英Prompt、整ったdocumentationは、完成状態だけを見ると機械的に見えやすい箇所です。Recorderへ処理が集中した初期版、重複保存、BatchmodeでのScreenshot失敗、検証scriptのprocess待機問題をどう見つけ、何を基準に直したかを自分の言葉で説明できる必要があります。
+説明量を増やしすぎるとメインのゲーム作品が埋もれます。応募フォームでは3つの技術点に絞り、補助作品と明記する必要があります。
 
 ### 書類で説明すべきこと
 
@@ -119,13 +115,9 @@ Gameplay以外にも、Unityのframe timing、Editor API、lifecycle、失敗時
 - 将来機能やv0.3.0の構想
 - UIボタン単位の操作説明
 
-## AI利用
-
-実装方針の整理、テスト観点の洗い出し、コードレビュー、ドキュメント構成の補助にAIツールを使用しました。最終的な仕様判断、コードの採否、Unityへの組み込み、動作確認、修正、テスト結果の確認は自分で行っています。
-
 ## 応募フォーム記載候補
 
-Unity開発時のエラー調査を効率化するため、Error発生時のログ、Scene、直前操作、画面を保存するEditor拡張を制作しました。Application.logMessageReceivedでErrorを受け、画面取得はFIFO QueueでWaitForEndOfFrame後に実行します。取得失敗やPlay Mode終了時もReportを残し、callback解除、再帰防止、重複抑制を実装しました。Unity 6000.4.6f1でEditMode test 30件、Submission Validation、clean UPM、Player Build smokeを記録済みです。応募資料追加ではコード本体を変更していません。
+Unity開発時のエラー調査を効率化するため、Error発生時のログ、Scene、直前操作、画面を保存するEditor拡張を制作しました。Application.logMessageReceivedでErrorを検知し、画面取得はFIFO Queueに積んでWaitForEndOfFrame後に順次実行します。画面取得失敗やPlay Mode終了時にもReportを残す設計とし、callback解除、再帰ログ防止、重複Error抑制も実装しました。Unity 6000.4.6f1でEditMode test 30件に加え、Package導入・Player Buildを含む検証を実施しています。
 
 # CA Game Gym Supplement Verdict
 
