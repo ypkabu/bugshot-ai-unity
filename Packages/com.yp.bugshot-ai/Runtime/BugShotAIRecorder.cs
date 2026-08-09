@@ -1,36 +1,36 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace YP.BugShotAI
 {
-    /// <summary>
-    /// Minimal MVP recorder for BugShot AI.
-    /// Attach this component to one GameObject in the first scene.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class BugShotAIRecorder : MonoBehaviour
     {
-        private const string PackageVersion = "0.1.0";
+        private const int MaxPendingCaptureCount = 64;
 
         [Header("Target")]
         [Tooltip("Optional. Assign the player Transform to include its position in reports.")]
         [SerializeField] private Transform playerTransform;
 
-        [Header("Capture")]
-        [SerializeField] private bool captureOnError = true;
-        [SerializeField] private bool captureOnException = true;
-        [SerializeField] private bool captureOnAssert = false;
-        [SerializeField] private int maxRecentEvents = 50;
-        [SerializeField] private float duplicateCooldownSeconds = 1.0f;
-        [SerializeField] private string outputFolderName = "BugShotAI";
+        [Header("Settings")]
+        [SerializeField] private BugShotAISettings settings = BugShotAISettings.CreateDefault();
+
+        [Header("Default User Notes")]
+        [SerializeField] private string reproductionSteps;
+        [SerializeField] private string expectedResult;
+        [SerializeField] private string actualResult;
+        [SerializeField] private string notes;
 
         private readonly Queue<BugShotAIEvent> recentEvents = new Queue<BugShotAIEvent>();
+        private readonly Queue<PendingCapture> pendingCaptures = new Queue<PendingCapture>();
+        private readonly BugShotAIDuplicateTracker duplicateTracker = new BugShotAIDuplicateTracker();
+        private BugShotAILogRingBuffer logRingBuffer = new BugShotAILogRingBuffer(80);
+        private Coroutine captureCoroutine;
         private float smoothedFps;
-        private float lastCaptureRealtime = -999f;
         private bool isHandlingLog;
+        private bool isQuitting;
 
         public Transform PlayerTransform
         {
@@ -38,22 +38,33 @@ namespace YP.BugShotAI
             set => playerTransform = value;
         }
 
+        public BugShotAISettings Settings => settings;
         public string LastReportPath { get; private set; }
+        public string LastReportFolderPath { get; private set; }
 
         private void OnValidate()
         {
-            maxRecentEvents = Mathf.Max(1, maxRecentEvents);
-            duplicateCooldownSeconds = Mathf.Max(0f, duplicateCooldownSeconds);
-
-            if (string.IsNullOrWhiteSpace(outputFolderName))
+            if (settings == null)
             {
-                outputFolderName = "BugShotAI";
+                settings = BugShotAISettings.CreateDefault();
             }
+
+            settings.Validate();
         }
 
         private void OnEnable()
         {
+            if (settings == null)
+            {
+                settings = BugShotAISettings.CreateDefault();
+            }
+
+            settings.Validate();
+            logRingBuffer = new BugShotAILogRingBuffer(settings.maxRecentLogs);
+
+            BugShotAIEventLogger.EventRecorded -= RecordEvent;
             BugShotAIEventLogger.EventRecorded += RecordEvent;
+            Application.logMessageReceived -= OnLogMessageReceived;
             Application.logMessageReceived += OnLogMessageReceived;
             RecordEvent("BugShotAI", "Recorder enabled");
         }
@@ -62,6 +73,37 @@ namespace YP.BugShotAI
         {
             Application.logMessageReceived -= OnLogMessageReceived;
             BugShotAIEventLogger.EventRecorded -= RecordEvent;
+
+            if (captureCoroutine != null)
+            {
+                StopCoroutine(captureCoroutine);
+                captureCoroutine = null;
+            }
+
+            if (isQuitting)
+            {
+                pendingCaptures.Clear();
+            }
+            else
+            {
+                FlushPendingCaptures("Screenshot capture was canceled because the Recorder was disabled.");
+            }
+        }
+
+        public void FlushPendingCapturesBeforePlayModeExit()
+        {
+            if (captureCoroutine != null)
+            {
+                StopCoroutine(captureCoroutine);
+                captureCoroutine = null;
+            }
+
+            FlushPendingCaptures("Screenshot capture was canceled because Play Mode was exiting.");
+        }
+
+        private void OnApplicationQuit()
+        {
+            isQuitting = true;
         }
 
         private void Update()
@@ -79,32 +121,67 @@ namespace YP.BugShotAI
 
         private void OnLogMessageReceived(string condition, string stackTrace, LogType type)
         {
-            if (!ShouldCapture(type))
+            BugShotAISettings activeSettings = ResolveSettings();
+            logRingBuffer.SetMaxLogs(activeSettings.maxRecentLogs);
+            logRingBuffer.Record(condition, stackTrace, type, activeSettings);
+
+            if (isQuitting || isHandlingLog || BugShotAITextUtility.StartsWithInternalPrefix(condition))
             {
                 return;
             }
 
-            if (isHandlingLog)
+            if (!activeSettings.ShouldCapture(type))
             {
                 return;
             }
 
-            if (Time.realtimeSinceStartup - lastCaptureRealtime < duplicateCooldownSeconds)
+            string fingerprint = BugShotAIFingerprint.Generate(type.ToString(), condition, stackTrace);
+            BugShotAIDuplicateResult duplicateResult = duplicateTracker.Register(
+                fingerprint,
+                Time.realtimeSinceStartup,
+                DateTime.UtcNow,
+                activeSettings.duplicateCooldownSeconds);
+
+            if (!duplicateResult.ShouldCapture)
             {
                 return;
             }
 
             isHandlingLog = true;
-            lastCaptureRealtime = Time.realtimeSinceStartup;
 
             try
             {
-                CaptureBugReport(condition, stackTrace, type);
+                PendingCapture pendingCapture = new PendingCapture(
+                    condition,
+                    stackTrace,
+                    type,
+                    activeSettings.Clone(),
+                    duplicateResult);
+
+                if (ShouldWaitForRenderedFrame(activeSettings))
+                {
+                    if (pendingCaptures.Count >= MaxPendingCaptureCount)
+                    {
+                        SavePendingCapture(
+                            pendingCaptures.Dequeue(),
+                            BugShotAIScreenshotResult.NotCaptured(
+                                "Screenshot was skipped because the pending capture queue reached its limit."));
+                    }
+
+                    pendingCaptures.Enqueue(pendingCapture);
+                    if (captureCoroutine == null)
+                    {
+                        captureCoroutine = StartCoroutine(ProcessPendingCaptures());
+                    }
+                }
+                else
+                {
+                    SavePendingCapture(pendingCapture, null);
+                }
             }
             catch (Exception ex)
             {
-                // Warning logs are ignored by ShouldCapture, so this avoids recursive error capture.
-                Debug.LogWarning($"[BugShotAI] Failed to capture bug report: {ex}");
+                Debug.LogWarning($"{BugShotAIConstants.LogPrefix} Failed to capture report. {ex}");
             }
             finally
             {
@@ -112,97 +189,154 @@ namespace YP.BugShotAI
             }
         }
 
-        private bool ShouldCapture(LogType type)
+        private static bool ShouldWaitForRenderedFrame(BugShotAISettings activeSettings)
         {
-            return (type == LogType.Error && captureOnError)
-                   || (type == LogType.Exception && captureOnException)
-                   || (type == LogType.Assert && captureOnAssert);
+            return activeSettings != null
+                   && activeSettings.captureScreenshots
+                   && Application.isPlaying
+                   && !Application.isBatchMode;
         }
 
-        private void CaptureBugReport(string condition, string stackTrace, LogType type)
+        private IEnumerator ProcessPendingCaptures()
         {
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
-            string outputDirectory = Path.Combine(Application.persistentDataPath, outputFolderName);
-            Directory.CreateDirectory(outputDirectory);
-
-            string screenshotFileName = $"bugshot_{timestamp}.png";
-            string screenshotPath = Path.Combine(outputDirectory, screenshotFileName);
-            ScreenCapture.CaptureScreenshot(screenshotPath);
-            Scene activeScene = SceneManager.GetActiveScene();
-
-            BugShotAIReport report = new BugShotAIReport
+            while (pendingCaptures.Count > 0)
             {
-                timestampUtc = DateTime.UtcNow.ToString("o"),
-                sceneName = GetSceneName(activeScene),
-                scenePath = NormalizePath(activeScene.path),
-                logType = type.ToString(),
-                condition = condition,
-                stackTrace = stackTrace,
-                screenshotPath = NormalizePath(screenshotPath),
-                screenshotFileName = screenshotFileName,
-                fps = smoothedFps,
-                playerPosition = CreatePlayerPosition(),
-                environment = CreateEnvironment(),
-                recentEvents = recentEvents.ToArray()
-            };
+                // IMGUI and log callbacks can run with a non-Game render target bound.
+                yield return new WaitForEndOfFrame();
 
-            string reportPath = Path.Combine(outputDirectory, $"bugshot_{timestamp}.json");
-            string json = JsonUtility.ToJson(report, true);
-            File.WriteAllText(reportPath, json);
-            LastReportPath = NormalizePath(reportPath);
-        }
+                PendingCapture pendingCapture = pendingCaptures.Dequeue();
 
-        private static string GetSceneName(Scene scene)
-        {
-            return string.IsNullOrEmpty(scene.name) ? "(Untitled Scene)" : scene.name;
-        }
-
-        private static string NormalizePath(string path)
-        {
-            return string.IsNullOrEmpty(path) ? string.Empty : path.Replace('\\', '/');
-        }
-
-        private BugShotAIPlayerPosition CreatePlayerPosition()
-        {
-            if (playerTransform == null)
-            {
-                return new BugShotAIPlayerPosition
+                if (!isActiveAndEnabled || isQuitting || !Application.isPlaying)
                 {
-                    hasPlayer = false,
-                    x = 0f,
-                    y = 0f,
-                    z = 0f
-                };
+                    SavePendingCapture(
+                        pendingCapture,
+                        BugShotAIScreenshotResult.NotCaptured(
+                            "Screenshot capture was canceled before the rendered frame completed."));
+                    continue;
+                }
+
+                SavePendingCapture(
+                    pendingCapture,
+                    BugShotAIScreenshotCaptureService.CapturePng(pendingCapture.Settings));
             }
 
-            Vector3 position = playerTransform.position;
-            return new BugShotAIPlayerPosition
-            {
-                hasPlayer = true,
-                x = position.x,
-                y = position.y,
-                z = position.z
-            };
+            captureCoroutine = null;
         }
 
-        private BugShotAIEnvironment CreateEnvironment()
+        private void FlushPendingCaptures(string screenshotError)
         {
-            return new BugShotAIEnvironment
+            while (pendingCaptures.Count > 0)
             {
-                unityVersion = Application.unityVersion,
-                platform = Application.platform.ToString(),
-                operatingSystem = SystemInfo.operatingSystem,
-                deviceModel = SystemInfo.deviceModel,
-                systemMemorySize = SystemInfo.systemMemorySize,
-                graphicsDeviceName = SystemInfo.graphicsDeviceName,
-                productName = Application.productName,
-                companyName = Application.companyName,
-                packageVersion = PackageVersion
-            };
+                SavePendingCapture(
+                    pendingCaptures.Dequeue(),
+                    BugShotAIScreenshotResult.NotCaptured(screenshotError));
+            }
+        }
+
+        private void SavePendingCapture(PendingCapture pendingCapture, BugShotAIScreenshotResult screenshotResult)
+        {
+            bool previousHandlingState = isHandlingLog;
+            isHandlingLog = true;
+
+            try
+            {
+                CaptureBugReport(
+                    pendingCapture.Condition,
+                    pendingCapture.StackTrace,
+                    pendingCapture.LogType,
+                    pendingCapture.Settings,
+                    pendingCapture.DuplicateResult,
+                    screenshotResult);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"{BugShotAIConstants.LogPrefix} Failed to capture report. {ex}");
+            }
+            finally
+            {
+                isHandlingLog = previousHandlingState;
+            }
+        }
+
+        private void CaptureBugReport(
+            string condition,
+            string stackTrace,
+            LogType type,
+            BugShotAISettings activeSettings,
+            BugShotAIDuplicateResult duplicateResult,
+            BugShotAIScreenshotResult screenshotResult)
+        {
+            if (screenshotResult == null)
+            {
+                screenshotResult = BugShotAIScreenshotCaptureService.CapturePng(activeSettings);
+            }
+
+            BugShotAIReport report = BugShotAIReportBuilder.Build(new BugShotAIReportBuildContext
+            {
+                UtcNow = DateTime.UtcNow,
+                Settings = activeSettings,
+                Condition = condition,
+                StackTrace = stackTrace,
+                LogType = type,
+                Fps = smoothedFps,
+                PlayerTransform = playerTransform,
+                OccurrenceCount = duplicateResult.OccurrenceCount,
+                FirstOccurrenceUtc = duplicateResult.FirstOccurrenceUtc,
+                ScreenshotError = screenshotResult.Error,
+                ReproductionSteps = reproductionSteps,
+                ExpectedResult = expectedResult,
+                ActualResult = string.IsNullOrWhiteSpace(actualResult) ? condition : actualResult,
+                Notes = notes,
+                RecentEvents = recentEvents.ToArray(),
+                RecentLogs = logRingBuffer.Snapshot()
+            });
+
+            BugShotAIPrivacySanitizer.SanitizeInPlace(report, activeSettings);
+
+            string rootPath = BugShotAIPathUtility.GetReportsRootPath(activeSettings);
+            BugShotAIReportStorage storage = new BugShotAIReportStorage(rootPath);
+            BugShotAISaveResult saveResult = storage.Save(report, screenshotResult.PngBytes, activeSettings);
+
+            LastReportPath = saveResult.jsonPath;
+            LastReportFolderPath = saveResult.reportDirectoryPath;
+            LogCleanupResult(saveResult);
+        }
+
+        private BugShotAISettings ResolveSettings()
+        {
+            BugShotAISettings activeSettings = BugShotAISettingsFile.LoadOrDefault(settings);
+            settings = activeSettings.Clone();
+            return activeSettings;
+        }
+
+        private void LogCleanupResult(BugShotAISaveResult saveResult)
+        {
+            if (saveResult == null)
+            {
+                return;
+            }
+
+            if (saveResult.cleanupErrors != null)
+            {
+                for (int i = 0; i < saveResult.cleanupErrors.Length; i++)
+                {
+                    Debug.LogWarning($"{BugShotAIConstants.LogPrefix} Report cleanup failed: {saveResult.cleanupErrors[i]}");
+                }
+            }
+
+            if (saveResult.deletedReportPaths != null)
+            {
+                for (int i = 0; i < saveResult.deletedReportPaths.Length; i++)
+                {
+                    Debug.Log($"{BugShotAIConstants.LogPrefix} Deleted old report: {saveResult.deletedReportPaths[i]}");
+                }
+            }
         }
 
         private void RecordEvent(string category, string message)
         {
+            BugShotAISettings activeSettings = settings ?? BugShotAISettings.CreateDefault();
+
             if (string.IsNullOrWhiteSpace(category))
             {
                 category = "General";
@@ -213,62 +347,36 @@ namespace YP.BugShotAI
                 timestampUtc = DateTime.UtcNow.ToString("o"),
                 timeSinceStartup = Time.realtimeSinceStartup,
                 category = category,
-                message = message ?? string.Empty
+                message = message
             });
 
-            while (recentEvents.Count > maxRecentEvents)
+            while (recentEvents.Count > activeSettings.maxRecentEvents)
             {
                 recentEvents.Dequeue();
             }
         }
-    }
 
-    [Serializable]
-    public sealed class BugShotAIReport
-    {
-        public string timestampUtc;
-        public string sceneName;
-        public string scenePath;
-        public string logType;
-        public string condition;
-        public string stackTrace;
-        public string screenshotPath;
-        public string screenshotFileName;
-        public float fps;
-        public BugShotAIPlayerPosition playerPosition;
-        public BugShotAIEnvironment environment;
-        public BugShotAIEvent[] recentEvents;
-    }
+        private sealed class PendingCapture
+        {
+            public PendingCapture(
+                string condition,
+                string stackTrace,
+                LogType logType,
+                BugShotAISettings settings,
+                BugShotAIDuplicateResult duplicateResult)
+            {
+                Condition = condition;
+                StackTrace = stackTrace;
+                LogType = logType;
+                Settings = settings;
+                DuplicateResult = duplicateResult;
+            }
 
-    [Serializable]
-    public sealed class BugShotAIEnvironment
-    {
-        public string unityVersion;
-        public string platform;
-        public string operatingSystem;
-        public string deviceModel;
-        public int systemMemorySize;
-        public string graphicsDeviceName;
-        public string productName;
-        public string companyName;
-        public string packageVersion;
-    }
-
-    [Serializable]
-    public sealed class BugShotAIPlayerPosition
-    {
-        public bool hasPlayer;
-        public float x;
-        public float y;
-        public float z;
-    }
-
-    [Serializable]
-    public sealed class BugShotAIEvent
-    {
-        public string timestampUtc;
-        public float timeSinceStartup;
-        public string category;
-        public string message;
+            public string Condition { get; }
+            public string StackTrace { get; }
+            public LogType LogType { get; }
+            public BugShotAISettings Settings { get; }
+            public BugShotAIDuplicateResult DuplicateResult { get; }
+        }
     }
 }
