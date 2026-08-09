@@ -1,0 +1,130 @@
+以下のBugShot AIレポートをもとに、GitHub Issueを生成してください。
+
+出力ルール:
+- Markdown形式で出力してください。
+- Title / Summary / Environment / Steps to Reproduce / Expected Result / Actual Result / Logs / Screenshot / Severity を含めてください。
+- Severity は Critical / High / Medium / Low から1つ選んでください。
+- 不明な情報は推測せず Unknown と書いてください。
+- recentEvents と userNotes がある場合は再現手順の推定に使ってください。
+- stackTrace から重要そうな行を抜き出してください。
+- 下に含まれるマスク済みデータだけを使ってください。
+
+JSON Report File: report.json
+Screenshot File: screenshot.png
+
+JSON:
+```json
+{
+    "schemaVersion": 2,
+    "reportId": "ExampleReport",
+    "fingerprint": "demo1234abcd5678",
+    "occurrenceCount": 3,
+    "firstOccurrenceUtc": "2026-07-31T00:00:01Z",
+    "timestampUtc": "2026-07-31T00:00:03Z",
+    "sceneName": "DemoScene",
+    "scenePath": "Assets/Scenes/DemoScene.unity",
+    "projectName": "BugShotAI Demo",
+    "logType": "Error",
+    "condition": "Player fell through the floor near the right platform.",
+    "stackTrace": "UnityEngine.Debug:LogError (object)\nBugShotAIDemoBugTrigger:TriggerDemoBug () (at <USER_HOME>/SecretProject/Assets/Samples/BugShotAI/BasicSetup/BugShotAIDemoBugTrigger.cs:63)\nDemoService:SendReport () (at <USER_HOME>/SecretProject/Assets/DemoService.cs:24)\nLinuxRunner:Execute () (at <USER_HOME>/SecretProject/Assets/LinuxRunner.cs:18)\nNetworkShare:Read () (at <UNC_PATH>\\SecretProject\\Assets\\NetworkShare.cs:7)\nAuthorization: <REDACTED> api_key= <REDACTED> access_token= <REDACTED>\nhttps://example.invalid/callback#access_token= <REDACTED>\nContact: <EMAIL>\nIP: <IP_ADDRESS>\n",
+    "screenshotPath": "ExampleReport/screenshot.png",
+    "screenshotFileName": "screenshot.png",
+    "relativeScreenshotPath": "ExampleReport/screenshot.png",
+    "markdownFileName": "report.md",
+    "promptJaFileName": "prompt_ja.txt",
+    "promptEnFileName": "prompt_en.txt",
+    "screenshotError": "",
+    "fps": 60.0,
+    "isPlaying": true,
+    "editorState": {
+        "isEditor": true,
+        "isPlaying": true,
+        "isBatchMode": false,
+        "platform": "WindowsEditor"
+    },
+    "userNotes": {
+        "reproductionSteps": "Press D, LeftShift, Space, then B in DemoScene.",
+        "expectedResult": "The player should remain on the right platform.",
+        "actualResult": "The player Y position dropped below the expected floor height.",
+        "notes": "Sanitizer demo input included dummy user paths, email, token, URL fragment token, and IP address."
+    },
+    "playerPosition": {
+        "hasPlayer": true,
+        "x": 2.5,
+        "y": -3.200000047683716,
+        "z": 0.0
+    },
+    "environment": {
+        "unityVersion": "6000.4.6f1",
+        "platform": "WindowsEditor",
+        "operatingSystem": "Windows 11",
+        "deviceModel": "Demo Workstation",
+        "systemMemorySize": 32768,
+        "graphicsDeviceName": "Demo GPU",
+        "projectName": "BugShotAI Demo",
+        "productName": "BugShotAI Demo",
+        "companyName": "YP",
+        "packageVersion": "0.2.0"
+    },
+    "recentEvents": [
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Pressed move right"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Pressed dash"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Pressed jump"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Moved to right platform"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Pressed dash before jump"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Player",
+            "message": "Jumped near platform edge"
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.9000000953674318,
+            "category": "Bug",
+            "message": "Player Y position dropped below expected floor height"
+        }
+    ],
+    "recentLogs": [
+        {
+            "timestampUtc": "2026-07-31T00:00:02Z",
+            "timeSinceStartup": 2.950000047683716,
+            "logType": "Log",
+            "message": "Loaded config from <USER_HOME>/SecretProject/config.json with token= <REDACTED>",
+            "stackTrace": ""
+        },
+        {
+            "timestampUtc": "2026-07-31T00:00:03Z",
+            "timeSinceStartup": 3.119999885559082,
+            "logType": "Error",
+            "message": "Player fell through the floor near the right platform.",
+            "stackTrace": "BugShotAIDemoBugTrigger:TriggerDemoBug ()"
+        }
+    ]
+}
+```

@@ -1,0 +1,21 @@
+{
+  "name": "yp.bugshot-ai.tests.editor",
+  "rootNamespace": "YP.BugShotAI.Tests",
+  "references": [
+    "yp.bugshot-ai"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

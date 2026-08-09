@@ -86,6 +86,11 @@ crashlytics-build.properties
 
 # TestRunner generated files
 InitTestScene*.unity*
+/[Tt]est[Rr]esults/
+
+# BugShot AI local report output when a custom root points into the repository
+/BugShotReports/
+/BugShotAI/
 
 # Addressables default ignores, before user customizations
 /ServerData
