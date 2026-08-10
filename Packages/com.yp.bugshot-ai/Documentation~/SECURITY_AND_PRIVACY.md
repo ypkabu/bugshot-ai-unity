@@ -1,59 +1,55 @@
-# Security and Privacy
+# セキュリティとプライバシー
 
-BugShot AI is designed to help developers share useful debugging context without accidentally exposing local paths or secrets.
+BugShot AIは、有用なデバッグ情報を共有する際に、ローカルパスや機密情報を誤って含める危険を減らすよう設計しています。
 
-## What Is Masked
+## マスクする情報
 
-The sanitizer masks:
+- `C:\Users\name`のようなWindowsユーザーディレクトリ
+- `/Users/name`のようなmacOSユーザーディレクトリ
+- `/home/name`のようなLinuxホームディレクトリ
+- `\\BuildShare\Users\name`のようなUNCユーザーパス
+- 現在のUnityプロジェクトの絶対パス
+- メールアドレス
+- `Authorization` header
+- `Bearer` token
+- GitHub token形式の文字列
+- API key、access token、client secret、secret、tokenの代入
+- `token`、`key`、`secret`、`api_key`、`access_token`、`client_secret`という名前のURL query／fragment値
+- 設定で有効にした場合のIPアドレス
 
-- Windows user directories such as `C:\Users\name`
-- macOS user directories such as `/Users/name`
-- Linux home directories such as `/home/name`
-- UNC user paths such as `\\BuildShare\Users\name`
-- The current Unity project absolute path
-- Email addresses
-- `Authorization` headers
-- `Bearer` tokens
-- GitHub token-like strings
-- API key, access token, client secret, secret, and token assignments
-- URL query or fragment values named `token`, `key`, `secret`, `api_key`, `access_token`, or `client_secret`
-- IP addresses when the setting is enabled
+具体的なプロジェクトパスとホームパスを、一般的なパスパターンより先に置き換えます。これにより、可能な場合はすべてを`<USER_HOME>`にせず`<PROJECT_ROOT>`を残します。
 
-Specific project and home roots are replaced before the broader path patterns. This preserves `<PROJECT_ROOT>` when possible instead of reducing every matching path to `<USER_HOME>`.
-
-Example using dummy test data:
+テスト用データの例：
 
 ```text
-Before: C:\Users\alice\Project\Assets\Test.cs
-After:  <USER_HOME>\Project\Assets\Test.cs
+変更前: C:\Users\alice\Project\Assets\Test.cs
+変更後: <USER_HOME>\Project\Assets\Test.cs
 
-Before: Authorization: Bearer demo-token
-After:  Authorization: <REDACTED>
+変更前: Authorization: Bearer demo-token
+変更後: Authorization: <REDACTED>
 ```
 
-## Output Policy
+## 出力方針
 
-BugShot AI saves sanitized reports. The JSON, Markdown, and prompt files are generated from the sanitized report model.
+BugShot AIは、マスク済みのレポートを保存します。JSON、Markdown、Promptは、マスク後のレポートモデルから生成します。
 
-The Editor Window displays safe path labels by default. Full local paths are still available through explicit copy actions when a developer needs them locally.
+Editor Windowは初期状態で安全なパス表示を使用します。開発者がローカル作業で必要とする場合に限り、明示的なコピー操作から完全なパスを取得できます。
 
-## No External Sending
+## 外部送信を行わない
 
-The package does not send reports to external services.
+パッケージはレポートを外部サービスへ送信しません。GitHub Issue APIへの投稿と外部AI API呼び出しは実装していません。これにより、Unity Editor内でのトークン保存と、未確認のデバッグ情報を外部へ送る危険を避けています。
 
-GitHub Issue API posting and external AI API calls are intentionally not implemented in this version. This avoids storing tokens in the Unity Editor and avoids sending unreviewed debugging data outside the local machine.
+## 残る危険
 
-## Remaining Risks
+- stack traceやユーザー入力には、機密情報ではなくてもプロジェクト固有の名前が含まれることがあります
+- スクリーンショットには、ゲーム画面やデスクトップ上の情報が映る可能性があります
+- ローカルIPはネットワーク調査に役立つことがあるため、IPマスクは任意です
+- 出力先にはユーザーが選択した任意の場所を指定できますが、パッケージがそこからuploadすることはありません
+- 広いパターンは問題のない文字列もマスクする場合があります。共有用レポートでは、credentialらしい値を残すより誤検出を優先します
 
-- Unity stack traces or user-provided notes may contain project-specific names that are not secrets but could still be sensitive.
-- Screenshots may contain sensitive in-game or desktop content.
-- IP masking is optional because local IPs can be useful during networking debugging.
-- A custom output directory can point anywhere the user selects. The package does not upload that directory.
-- Broad path and token patterns can mask harmless text. The current policy prefers a false positive in shared report text over leaving a likely credential visible.
+## デモ公開前の確認
 
-## Recommended Demo Practice
-
-- Use the Editor Window safe path display for screenshots and videos.
-- Review `report.json`, `report.md`, and prompt files before publishing.
-- Do not publish raw reports from a private project without checking screenshots and user notes.
-- Use `Documentation~/ExampleReport/` for public README examples when possible.
+- スクリーンショットや動画には、Editor Windowの安全なパス表示を使用します
+- `report.json`、`report.md`、Promptを公開前に確認します
+- 非公開プロジェクトの生レポートは、スクリーンショットとユーザー入力を確認せず公開しません
+- 公開READMEの例には`Documentation~/ExampleReport/`を使用します

@@ -1,89 +1,89 @@
 # BugShot AI for Unity
 
-BugShot AI saves the context around a Unity Error or Exception so a developer can review it before writing an Issue or asking an AI tool for help.
+BugShot AIは、UnityでErrorやExceptionが発生した際の状況を保存し、開発者がGitHub Issueを作成したり、AIツールへ相談したりする前に内容を確認できるEditor拡張です。
 
-It does not find or fix bugs, and it does not send reports outside the local machine.
+バグを自動で検出・修正するものではなく、レポートを外部へ自動送信することもありません。
 
-## What Problem It Solves
+## 解決したかった課題
 
-When I reproduced a Unity bug, the Console message was often available but the surrounding context was not. I still had to explain which Scene was open, what happened immediately before the error, which Unity environment was running, and whether the Game View showed anything useful.
+Unityで不具合を再現しても、Consoleのメッセージだけでは、開いていたシーン、エラー直前の操作、実行環境、Game Viewの状態などが残らないことがありました。また、stack traceをそのまま共有すると、ローカルのユーザーパスやトークンに見える値まで含まれる可能性があります。
 
-Copying a raw stack trace also risked sharing a local user path or token-like value. I built this package to capture those details when Unity logs the error, mask common sensitive text, and leave the result for the developer to review.
+このパッケージは、Unityがエラーを記録した時点で周辺情報を収集し、代表的な機密情報をマスクしたうえで、開発者が確認できるレポートとして保存します。
 
-## Demo
+## デモ
 
-The Basic Setup sample contains two scripts for checking the capture flow in a Scene of your choice:
+Basic Setupサンプルには、任意のシーンで収集処理を確認するためのスクリプトが2つあります。
 
-1. Import the Basic Setup sample.
-2. Add `BugShotAIDemoBugTrigger` or `BugShotAIDemoErrorPanel` to a GameObject in your Scene.
-3. Open `Tools > BugShot AI > Open Window` and create a Recorder if the Scene does not already contain one.
-4. Enter Play Mode.
-5. With `BugShotAIDemoBugTrigger`, press `D -> LeftShift -> Space -> B`. With `BugShotAIDemoErrorPanel`, click `Debug.LogError`.
-6. Unity logs the demo Error and creates a report.
-7. Select the new report and review its Error, Screenshot, recent events, privacy preview, Markdown, and prompt.
+1. Basic Setupサンプルをインポートします。
+2. シーン内のGameObjectへ`BugShotAIDemoBugTrigger`または`BugShotAIDemoErrorPanel`を追加します。
+3. `Tools > BugShot AI > Open Window`を開き、シーンにRecorderがなければ作成します。
+4. Play Modeに入ります。
+5. `BugShotAIDemoBugTrigger`では`D -> LeftShift -> Space -> B`を順に押します。`BugShotAIDemoErrorPanel`では`Debug.LogError`をクリックします。
+6. Unityがデモ用Errorを記録し、レポートを作成します。
+7. 新しいレポートを選択し、Error、スクリーンショット、直前のイベント、プライバシー確認、Markdown、Promptを確認します。
 
-[Watch the 56-second repository demo](Documentation~/demo/bugshot-ai-demo.mp4) (1920x1080, no audio).
+[56秒のデモ動画](Documentation~/demo/bugshot-ai-demo.mp4)（1920x1080、音声なし）
 
-![BugShot AI Editor Window showing report history and details](Documentation~/images/bugshot-main-window.png)
+![レポート履歴と詳細を表示するBugShot AI Editor Window](Documentation~/images/bugshot-main-window.png)
 
-![Generated report with masked paths and reproduction details](Documentation~/images/generated-report.png)
+![パスをマスクし、再現情報をまとめたレポート](Documentation~/images/generated-report.png)
 
-![Privacy sanitizer before and after preview](Documentation~/images/privacy-preview.png)
+![プライバシー処理の適用前・適用後](Documentation~/images/privacy-preview.png)
 
-The sanitized files in [Documentation~/ExampleReport/](Documentation~/ExampleReport/) provide a reproducible text-output example.
+[Documentation~/ExampleReport/](Documentation~/ExampleReport/)には、機密情報を含まない再現可能な出力例があります。
 
-## Before / After
+## 初期版からの改善
 
-The first MVP completed the capture flow, but it exposed concrete problems:
+最初のMVPでは収集処理は完成していましたが、次の問題がありました。
 
-- `BugShotAIRecorder` requested the screenshot, assembled JSON, and saved files itself.
-- Prompt text was built in the Editor Window, so it was difficult to test without the UI.
-- Repeated identical errors could create many JSON and PNG files.
-- Privacy handling only replaced a report path when building a prompt.
-- Batchmode screenshot capture returned no texture.
+- `BugShotAIRecorder`がスクリーンショット要求、JSON生成、ファイル保存まで担当していた
+- Promptの文章をEditor Window内で生成していたため、UIなしではテストしにくかった
+- 同じエラーが繰り返されると、多数のJSONとPNGが作成される可能性があった
+- プライバシー処理はPrompt作成時のレポートパス置換に限られていた
+- batchmodeではスクリーンショット用Textureを取得できなかった
 
-The current version keeps the Recorder as the Unity callback coordinator and moves deterministic or failure-prone work behind concrete classes:
+現在はRecorderをUnity callbackの調整役に限定し、決定的に処理できる部分や失敗し得る部分を個別のクラスへ分離しています。
 
-- reports use one folder with fixed filenames
-- formatting is independent of the Editor Window
-- a fingerprint cooldown limits repeated screenshot and disk work
-- reports are sanitized before JSON, Markdown, or prompts are written
-- screenshot failure is stored as data and the text report still saves
+- 1レポートを固定ファイル名の1フォルダーへ保存
+- 表示形式の生成をEditor Windowから分離
+- fingerprintのcooldownで、同じエラーによるスクリーンショット取得とディスク書き込みを抑制
+- JSON、Markdown、Promptを書き出す前にレポート全体をマスク
+- スクリーンショット取得に失敗しても、理由をデータとして記録し、テキストのレポートは保存
 
-## Installation and Setup
+## インストールと初期設定
 
-Install from a Git URL in Unity Package Manager:
+Unity Package Managerから次のGit URLを指定します。
 
 ```text
 https://github.com/ypkabu/bugshot-ai-unity.git?path=Packages/com.yp.bugshot-ai
 ```
 
-The package manifest minimum is Unity 6000.4.
+package manifestが要求する最小バージョンはUnity 6000.4です。
 
-1. Open `Tools > BugShot AI > Open Window`.
-2. Click `Create Recorder In Scene`.
-3. Optionally assign `Player Transform` on the Recorder.
-4. Configure capture, privacy, and storage under `Project Settings > BugShot AI`.
-5. Enter Play Mode and trigger an Error or Exception.
-6. Select the report and review it before copying or sharing anything.
+1. `Tools > BugShot AI > Open Window`を開きます。
+2. `Create Recorder In Scene`をクリックします。
+3. 必要に応じてRecorderの`Player Transform`を設定します。
+4. `Project Settings > BugShot AI`で収集、プライバシー、保存数を設定します。
+5. Play ModeでErrorまたはExceptionを発生させます。
+6. レポートを選択し、コピーや共有の前に内容を確認します。
 
-## Main Features
+## 主な機能
 
-- Captures configured Unity `Error`, `Exception`, `Assert`, and `Warning` logs.
-- Stores scene information, environment, FPS, optional player position, breadcrumbs, and recent Console logs.
-- Writes JSON, Markdown, JP/EN prompt text, and an optional PNG into one report folder.
-- Lists reports and displays their Error, Environment, Screenshot, Reproduction, Privacy, and Export information in an Editor Window.
-- Limits repeated capture work using a fingerprint cooldown.
-- Deletes the oldest report folders when the configured count or approximate size limit is exceeded.
-- Keeps Runtime code free of `UnityEditor` references.
+- 設定したUnityの`Error`、`Exception`、`Assert`、`Warning`を収集
+- シーン情報、実行環境、FPS、任意のプレイヤー位置、操作履歴、直近のConsoleログを保存
+- JSON、Markdown、日本語／英語のPrompt、任意のPNGを1つのレポートフォルダーへ出力
+- Editor Windowでレポート履歴とError、実行環境、スクリーンショット、再現情報、プライバシー、出力内容を表示
+- fingerprintのcooldownによる重複収集の抑制
+- 設定した件数または概算容量を超えた場合、古いレポートフォルダーから削除
+- Runtimeコードから`UnityEditor`への参照を分離
 
-Gameplay code can record a short breadcrumb:
+ゲーム側から短い操作履歴を記録できます。
 
 ```csharp
 BugShotAIEventLogger.Record("Player", "Jumped near platform edge");
 ```
 
-## Actual Output
+## 出力例
 
 ```text
 BugShotReports/
@@ -95,99 +95,99 @@ BugShotReports/
     prompt_en.txt
 ```
 
-`screenshot.png` is omitted when Unity cannot capture a texture. In that case, `report.json` contains `screenshotError` and the remaining files are still written.
+UnityがTextureを取得できなかった場合は`screenshot.png`を省略します。その場合も`report.json`へ`screenshotError`を記録し、残りのファイルは保存します。
 
-The JSON contains the error identity, Scene, user notes, optional player position, environment, recent events, and recent logs. See the checked-in [sanitized example](Documentation~/ExampleReport/).
+JSONには、エラーの識別情報、シーン、ユーザー入力、任意のプレイヤー位置、実行環境、直前のイベント、直近のログが含まれます。[機密情報を除いた出力例](Documentation~/ExampleReport/)も参照できます。
 
-## Design Decisions
+## 設計上の判断
 
-### Recorder as coordinator
+### 収集処理ではRecorderを調整役に限定
 
-`BugShotAIRecorder` owns Unity callbacks, FPS sampling, the optional player Transform, and the capture sequence. Masking, duplicate decisions, formatting, and storage stay outside the component because each has deterministic tests or a separate failure boundary.
+`BugShotAIRecorder`はUnity callback、FPSの計測、任意のPlayer Transform、収集順序を担当します。マスク、重複判定、表示形式、保存処理は、直接テストできる処理や異なる失敗条件を持つ処理として外へ分離しています。
 
-### Fingerprint cooldown
+### 重複収集をfingerprintのcooldownで抑制
 
-The fingerprint uses the log type, condition, and first useful stack line. Timestamp, Scene, FPS, and player position are excluded because those changing values would stop repeated instances of the same error from matching.
+fingerprintにはログ種別、condition、stack trace内の最初の有効な行を使用します。時刻、シーン、FPS、プレイヤー位置を含めると、同じエラーでも一致しなくなるため除外しています。
 
-Suppressed occurrences are counted in memory, but screenshot capture and disk writes are skipped until the cooldown expires.
+抑制した発生回数はメモリ上で数えますが、cooldown中はスクリーンショット取得とディスク書き込みを行いません。
 
-### Privacy order
+### プライバシー処理の順序
 
-Masking runs in this order: known project and home roots, generic user paths, optional email, authorization and token-like text, then optional IP addresses. Specific roots run first so a project path can keep the more useful `<PROJECT_ROOT>` label.
+既知のプロジェクト／ホームパス、一般的なユーザーパス、任意のメールアドレス、Authorizationやトークンに見える文字列、任意のIPアドレスの順にマスクします。具体的なパスを先に処理することで、可能な場合は`<PROJECT_ROOT>`という情報量の多い表示を残します。
 
-### Screenshot fallback
+### スクリーンショット失敗時の継続
 
-An Error can be raised while the Editor is drawing a non-Game UI target, so Play Mode capture waits for the end of the frame before calling `ScreenCapture.CaptureScreenshotAsTexture()`. The API can still return no texture in batchmode or without a usable render target. The PNG is supporting evidence, so its failure does not discard the Error, stack trace, environment, or breadcrumbs.
+Play Modeではフレームの描画終了を待ってから`ScreenCapture.CaptureScreenshotAsTexture()`を呼びます。それでもbatchmodeや有効な描画対象がない場合はTextureを取得できません。PNGは補助情報として扱い、取得に失敗してもError、stack trace、実行環境、操作履歴は保存します。
 
-### Storage limits
+### 保存数と容量の上限
 
-The default limit is 50 report folders and approximately 256 MB. Cleanup selects the oldest folders first. The selection rule is tested separately from file deletion.
+初期値は50フォルダー、概算256 MBです。上限を超えた場合は古いフォルダーから削除します。削除対象の選択規則は、実際のファイル削除とは分けてテストしています。
 
-### Runtime and Editor assemblies
+### 実行用とEditor用のAssemblyを分離
 
-Play Mode capture and the public breadcrumb API remain in the Runtime assembly. The Window and Project Settings UI are in an Editor-only assembly that references Runtime. Runtime does not reference `UnityEditor`.
+Play Modeでの収集と公開操作履歴APIはRuntime Assemblyに置き、WindowとProject Settings UIはRuntimeを参照するEditor専用Assemblyに置いています。Runtimeから`UnityEditor`は参照しません。
 
-More detail is available in [ARCHITECTURE.md](Documentation~/ARCHITECTURE.md) and [DESIGN_DECISIONS.md](Documentation~/DESIGN_DECISIONS.md).
+詳細は[設計](Documentation~/ARCHITECTURE.md)と[設計判断](Documentation~/DESIGN_DECISIONS.md)に記載しています。
 
-## Approaches I Did Not Adopt
+## 採用しなかった方法
 
-I did not add automatic GitHub Issue posting or external AI submission. Those paths require authentication storage, permission and network error handling, and a stronger confirmation step. More importantly, automatic sending could expose project information before the developer reviews the masked text and screenshot.
+GitHub Issueへの自動投稿や外部AIへの自動送信は実装していません。これらには認証情報の保存、権限管理、ネットワークエラー処理、より明確な確認操作が必要です。また、開発者がマスク後の文章とスクリーンショットを確認する前に、プロジェクト情報を送信してしまう危険があります。
 
-The package stops at local files and explicit copy actions.
+このパッケージは、ローカルファイルの作成と明示的なコピー操作までを担当します。
 
-## Privacy
+## プライバシー
 
-The sanitizer is pattern-based. This test-style example matches the current output:
+マスク処理は文字列パターンに基づきます。現在の出力は、次のテスト用データのようになります。
 
-Before:
+変更前：
 
 ```text
 C:\Users\alice\Project\Assets\Test.cs
 Authorization: Bearer demo-token
 ```
 
-After:
+変更後：
 
 ```text
 <USER_HOME>\Project\Assets\Test.cs
 Authorization: <REDACTED>
 ```
 
-It also handles macOS and Linux home paths, UNC user paths, email addresses, GitHub token-like strings, secret assignments, URL secrets, and optional IP addresses. It cannot know every project-specific name, and screenshots always require manual review. See [SECURITY_AND_PRIVACY.md](Documentation~/SECURITY_AND_PRIVACY.md).
+macOS／Linuxのホームパス、UNCユーザーパス、メールアドレス、GitHub token形式の文字列、secret代入、URL内のsecret、任意のIPアドレスにも対応しています。ただし、プロジェクト固有の名前をすべて判定することはできず、スクリーンショットは必ず目視確認が必要です。詳細は[セキュリティとプライバシー](Documentation~/SECURITY_AND_PRIVACY.md)を参照してください。
 
-## Duplicate Suppression
+## 重複収集の抑制
 
-SubmissionValidation emits the same `Debug.LogError` five times during a 60-second cooldown and verifies that one report folder is created. A separate tracker assertion verifies that suppressed occurrences still increase its in-memory count.
+`SubmissionValidation`では、60秒のcooldown中に同じ`Debug.LogError`を5回発生させ、レポートフォルダーが1つだけ作成されることを確認します。別のtracker検証で、抑制中もメモリ上の発生回数が増えることを確認します。
 
-The first saved JSON is not rewritten for each suppressed hit, so its `occurrenceCount` describes the capture that created that file. The current tests do not claim otherwise.
+最初に保存したJSONは、抑制のたびに書き換えません。そのため`occurrenceCount`は、そのファイルを作成した収集時点の値です。現在のテストも、それ以上の内容は保証していません。
 
-## Validation
+## 検証
 
-EditMode tests cover 30 deterministic cases: masking, text limits, fingerprint stability, duplicate rules, formatting, storage policy, and storage error handling.
+EditModeテストでは、マスク、文字数制限、fingerprintの安定性、重複規則、表示形式、保存方針、保存エラー処理の30項目を確認しています。
 
-SubmissionValidation uses actual Unity callbacks and file-system boundaries. `RunAll` checks 27 capture, storage, privacy, duplicate, Editor registration, sample, and screenshot-fallback cases. Persistence Phase 1 saves settings and report state in one Unity process; Phase 2 starts another Unity process and verifies 3 restart outcomes after 2 Phase 1 checks.
+`SubmissionValidation`は、実際のUnity callbackとファイルシステムを使用します。`RunAll`では、収集、保存、プライバシー、重複、Editor登録、サンプル、スクリーンショット失敗時の継続を含む27項目を確認します。設定とレポート状態の永続化では、最初のUnity processで2項目を保存し、別のUnity processで再起動後の3項目を検証します。
 
-The clean UPM pass creates a separate Unity project, resolves the local package, runs the same tests and validation phases, then performs a Windows Player Build smoke check.
+クリーンなUPM検証では、別のUnityプロジェクトを作成してローカルパッケージを解決し、同じテストと検証を実行した後、Windows Playerのビルド確認を行います。
 
-Commands and result files are documented in [TESTING.md](Documentation~/TESTING.md). The short interactive pass is in [QA_CHECKLIST.md](Documentation~/QA_CHECKLIST.md).
+コマンドと結果ファイルは[テスト](Documentation~/TESTING.md)、短い対話確認は[確認項目](Documentation~/QA_CHECKLIST.md)に記載しています。
 
-Latest verified environment:
+最新の確認環境：
 
-- Unity 6000.4.6f1 Windows Editor
-- Package compile: Pass
-- Original project EditMode: 30 passed / 0 failed
-- Original project SubmissionValidation: 27/27; Persistence 2/2 and 3/3
-- Clean UPM project EditMode: 30 passed / 0 failed
-- Clean UPM SubmissionValidation: 27/27; Persistence 2/2 and 3/3
-- Clean Windows Player Build smoke: Pass
+- Unity 6000.4.6f1 / Windows Editor
+- パッケージのコンパイル：成功
+- 元プロジェクトのEditMode：30成功 / 0失敗
+- 元プロジェクトの`SubmissionValidation`：27/27、永続化 2/2・3/3
+- クリーンなUPMプロジェクトのEditMode：30成功 / 0失敗
+- クリーンなUPMプロジェクトの`SubmissionValidation`：27/27、永続化 2/2・3/3
+- クリーンなWindows Playerビルド確認：成功
 
-## Limitations
+## 制限事項
 
-- `package.json` requires Unity 6000.4; verification was performed with Unity 6000.4.6f1 on Windows.
-- Unity 2022.3 LTS has not been tested.
-- Screenshot capture may fail in batchmode, outside Play Mode, or without a usable render target.
-- Reports still save when no screenshot is available.
-- Masking can produce false positives and cannot guarantee removal of every project-specific value.
-- Screenshots may contain visual information that text masking cannot inspect.
-- Suppressed duplicate hits do not rewrite the first saved report's occurrence count.
-- Reports are not sent automatically to GitHub or an external AI service.
+- `package.json`はUnity 6000.4以降を要求し、Unity 6000.4.6f1 / Windowsで検証しています
+- Unity 2022.3 LTSは未検証です
+- batchmode、Play Mode外、有効な描画対象がない場合はスクリーンショット取得に失敗することがあります
+- スクリーンショットがなくてもレポートは保存します
+- マスクには誤検出があり、プロジェクト固有の値をすべて除去できる保証はありません
+- スクリーンショット内の情報は文字列マスクでは確認できません
+- 抑制した重複発生は、最初に保存したレポートの`occurrenceCount`を書き換えません
+- GitHubや外部AIサービスへレポートを自動送信しません
