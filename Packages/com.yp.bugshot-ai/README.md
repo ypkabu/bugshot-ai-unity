@@ -167,11 +167,11 @@ EditModeテストでは、マスク、文字数制限、fingerprintの安定性�
 
 `SubmissionValidation`は、実際のUnity callbackとファイルシステムを使用します。`RunAll`では、収集、保存、プライバシー、重複、Editor登録、サンプル、スクリーンショット失敗時の継続を含む27項目を確認します。設定とレポート状態の永続化では、最初のUnity processで2項目を保存し、別のUnity processで再起動後の3項目を検証します。
 
-クリーンなUPM検証では、別のUnityプロジェクトを作成してローカルパッケージを解決し、同じテストと検証を実行した後、Windows Playerのビルド確認を行います。
+開発時のクリーンなUPM検証ではローカルパッケージ参照とWindows Playerビルドを確認しました。2026-09-29の再検証では別の新規Unityプロジェクトで上記Git URLを実際に解決し、コンパイル、EditMode `30/30`、実動作検証 `27/27`、永続化 `2/2・3/3`、Basic Setupの実Importを確認しました。2026-10-03にはImport済みDemoのErrorからJSON・Markdown・日英Promptも生成しました。今回のGUI操作・画像撮影・Playerビルドは未検証です。
 
 コマンドと結果ファイルは[テスト](Documentation~/TESTING.md)、短い対話確認は[確認項目](Documentation~/QA_CHECKLIST.md)に記載しています。
 
-最新の確認環境：
+開発時の確認環境と結果（最新のGit URL検証とは別）：
 
 - Unity 6000.4.6f1 / Windows Editor
 - パッケージのコンパイル：成功

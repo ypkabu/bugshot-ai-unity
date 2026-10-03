@@ -51,6 +51,7 @@ ExportedObj/
 *.csproj
 *.unityproj
 *.sln
+*.slnx
 *.suo
 *.tmp
 *.user
@@ -87,6 +88,11 @@ crashlytics-build.properties
 # TestRunner generated files
 InitTestScene*.unity*
 /[Tt]est[Rr]esults/
+
+# Local secrets (no matching secret files were found in the audit)
+.env
+.env.*
+!.env.example
 
 # BugShot AI local report output when a custom root points into the repository
 /BugShotReports/

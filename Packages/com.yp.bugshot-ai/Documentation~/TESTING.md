@@ -148,7 +148,40 @@ Logs/BugShotAI_player_build_smoke.log
 - 新しいUnity ProcessへSettingsを引き継ぐ
 - 新しいUnity ProcessでReport履歴を読み込む
 
-## 最新のローカル結果
+## 最新のGit URL導入検証（2026-09-29 / 2026-10-03）
+
+Unity `6000.4.6f1` / Windowsで `-createProject` を使って新規プロジェクトを作成し、ローカル `file:` 参照ではなく次のURLを `Packages/manifest.json` のdependenciesに追加しました。
+
+```text
+https://github.com/ypkabu/bugshot-ai-unity.git?path=Packages/com.yp.bugshot-ai
+```
+
+解決されたGit revisionは `1fbae142fc69cb8a359af2f4011bd723c22c4711`、packageは `0.2.0` です。revision指定なしURLは将来mainの更新を解決するため、ここでは検証対象commitも併記します。
+
+| 確認 | 結果 |
+| --- | --- |
+| Git package解決・Runtime / Editorコンパイル | 成功、Unity終了コード0 |
+| EditMode | 30成功 / 0失敗 |
+| SubmissionValidation.RunAll | 27成功 / 0失敗 |
+| 再起動をまたぐPersistencePhase1 / Phase2 | 2成功 / 0失敗、3成功 / 0失敗 |
+| Basic Setup実Import | Package Manager Sample APIで成功、両Demo scriptの配置を確認 |
+| Import後のDemoコンパイル・Report生成（10月3日） | 成功、Unity終了コード0。JSON / Markdown / 日英Promptを確認 |
+
+10月3日の確認はImport済み `BugShotAIDemoErrorPanel` の実際の `TriggerLogError` をbatchmodeで呼び、Recorderの `Application.logMessageReceived` から保存する経路を検証しました。期待するデモErrorと直前イベントがJSONに含まれます。スクリーンショットを無効にした検証で、GUIボタン・clipboard・通常Game Viewの撮影を再確認したという意味ではありません。意図的な `Debug.LogError` のログは、コンパイルエラーと区別しています。今回Windows Playerビルドは実施していません。
+
+### パッケージテストを新規プロジェクトで実行する準備
+
+通常の導入には不要ですが、パッケージのテストを実行する検証用プロジェクトでは `com.unity.test-framework`（今回1.6.0）をdependenciesに追加し、manifestのトップレベルに次を追加します。
+
+```json
+"testables": ["com.yp.bugshot-ai"]
+```
+
+既存dependenciesは削除せず、JSONに必要な区切りカンマを保ってください。最初の空プロジェクトではTest Frameworkなしでtestablesを追加するとNUnit参照が解決できませんでした。Test Frameworkとtestablesを揃えた後、コンパイルと上記テストが成功しています。`-runTests` やカスタムrunnerの開始直後に `-quit` を付けると結果保存前に終了し得るため、提供スクリプトの終了制御を使います。
+
+結果ファイルは、この文書前半の `TestResults/` と `Logs/` の指定先に保存しました。端末固有のログや実ReportはGit管理せず、確認項目・対象revision・集計をここに残します。
+
+## 開発時のローカル結果（最新のGit URL検証とは別）
 
 最終実行：2026-08-02
 
