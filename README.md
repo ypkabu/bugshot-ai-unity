@@ -61,7 +61,7 @@ Error / Exception → ログ・Scene・環境・記録済みイベントを収�
 - RuntimeとEditorのAssemblyを分離
 - Runtimeコードから`UnityEditor`への参照なし
 
-2026-09-29に新規プロジェクトで上記Git URLを解決し、コンパイル、EditMode `30/30`、実動作検証 `27/27`、再起動をまたぐ永続化 `2/2・3/3`、Basic Setupの実Importを確認しました。2026-10-03にはImport済みDemoのErrorからJSON・Markdown・日英Prompt生成も確認しました。後者はbatchmodeでDemoメソッドを呼ぶ検証であり、GUIボタン操作・スクリーンショットの再確認ではありません。[再現手順・結果](Packages/com.yp.bugshot-ai/Documentation~/TESTING.md)
+2026-09-29に新規プロジェクトで上記Git URLを解決し、コンパイル、EditMode `30/30`、実動作検証 `27/27`、再起動をまたぐ永続化 `2/2・3/3`、Basic Setupの実Importを確認しました。2026-10-03には通常Editorの実画面でもRecorder作成、テストError、SampleのError / Exception、PNG保存とプレビューを確認しました。実際のCopyボタンから得たMarkdown・日英Promptは保存ファイルと全文一致し、JSON Pathも保存先へ解決しました。[再現手順・結果と未検証範囲](Packages/com.yp.bugshot-ai/Documentation~/TESTING.md)
 
 ## 制限・ライセンス
 

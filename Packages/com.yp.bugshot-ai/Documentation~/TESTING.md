@@ -169,6 +169,26 @@ https://github.com/ypkabu/bugshot-ai-unity.git?path=Packages/com.yp.bugshot-ai
 
 10月3日の確認はImport済み `BugShotAIDemoErrorPanel` の実際の `TriggerLogError` をbatchmodeで呼び、Recorderの `Application.logMessageReceived` から保存する経路を検証しました。期待するデモErrorと直前イベントがJSONに含まれます。スクリーンショットを無効にした検証で、GUIボタン・clipboard・通常Game Viewの撮影を再確認したという意味ではありません。意図的な `Debug.LogError` のログは、コンパイルエラーと区別しています。今回Windows Playerビルドは実施していません。
 
+### 通常EditorのGUI・画像・clipboard（2026-10-03）
+
+上のbatchmode確認に続き、同じGit導入済みConsumerを通常Editor / Play Modeで開き、Dark themeで実際にボタンを操作しました。Camera・Cube・Floorを置いた検証用Sceneに、Import済みの `BugShotAIDemoErrorPanel` を配置しています。検証用Scene・設定はConsumer内だけの変更です。
+
+| 操作・確認 | 結果 |
+| --- | --- |
+| ToolsからWindowを開く | Recorder missingを表示 |
+| Create Recorder In Scene | Recorderを1つ作成しReadyへ遷移 |
+| Trigger Test Error | 新Reportを保存し、詳細を自動選択 |
+| SampleのDebug.LogError / NullReferenceExceptionをクリック | Error / ExceptionのJSON・Markdown・日英Prompt・PNGを保存 |
+| Sampleの直前イベント | `Clicked Debug.LogError button` をJSONで確認 |
+| WindowのScreenshot欄 | 保存PNGのプレビューを表示 |
+| PNG内容 | 1080×1920と1920×1080、Game ViewのSampleパネルと3D Sceneを目視確認、空画像ではない |
+| Copy Markdown / Copy Prompt EN / Copy Prompt JP | 実際のclipboardを読み、対応する保存ファイルと全文一致 |
+| Copy JSON Path | 区切り文字を正規化すると保存先と一致、実在するJSONへ解決 |
+
+3件とも `screenshotError` は空でした。画像内にユーザー名・個人パス・メール・通知は見当たりませんでしたが、これはこの検証Sceneの確認であり、すべてのSceneの匿名性を保証するものではありません。最初のコピー対象はWindowのTest Errorです。
+
+Light theme、全Sampleボタン、外部アプリへの貼り付け、今回のWindows Playerビルドは未検証です。データ削除ボタンは操作していません。
+
 ### パッケージテストを新規プロジェクトで実行する準備
 
 通常の導入には不要ですが、パッケージのテストを実行する検証用プロジェクトでは `com.unity.test-framework`（今回1.6.0）をdependenciesに追加し、manifestのトップレベルに次を追加します。
